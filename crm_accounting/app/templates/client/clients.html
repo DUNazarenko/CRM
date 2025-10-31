@@ -1,0 +1,310 @@
+<!-- app/templates/client/clients.html -->
+{% extends "client_base.html" %}
+
+{% block title %}Клиенты - CRM Бухгалтерия{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-0">
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2"><i class="fas fa-users me-2"></i>Клиенты</h1>
+        <button class="btn btn-primary-custom" data-bs-toggle="modal" data-bs-target="#addClientModal">
+            <i class="fas fa-plus me-2"></i>Добавить клиента
+        </button>
+    </div>
+
+    {% if clients_with_signatures %}
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title mb-0">Список клиентов</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Наименование</th>
+                            <th>Организационно-правовая форма</th>
+                            <th>ИНН</th>
+                            <th>Система налогообложения</th>
+                            <th>Работодатель</th>
+                            <th>ЭЦП</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in clients_with_signatures %}
+                        <tr class="clickable-row" onclick="window.location.href='/client/{{ client.id }}/clients/{{ item.client.id }}'" style="cursor: pointer;">
+                            <td>
+                                <strong>{{ item.client.organization_name }}</strong>
+                                {% if item.client.ogrn %}
+                                <br><small class="text-muted">ОГРН: {{ item.client.ogrn }}</small>
+                                {% endif %}
+                            </td>
+                            <td>{{ item.client.legal_form }}</td>
+                            <td>{{ item.client.inn or '-' }}</td>
+                            <td>{{ item.client.tax_system }}</td>
+                            <td>
+                                {% if item.client.is_employer %}
+                                    <span class="badge bg-success">Да</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Нет</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% set expiring_count = 0 %}
+                                {% for signature in item.signatures %}
+                                    {% if signature.end_date <= today_plus_10 %}
+                                        {% set expiring_count = expiring_count + 1 %}
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                {% if item.signatures %}
+                                    {% if expiring_count > 0 %}
+                                        <span class="badge bg-warning" title="{{ expiring_count }} ЭЦП истекает">
+                                            {{ item.signatures|length }} ({{ expiring_count }} ист.)
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-success">{{ item.signatures|length }}</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="badge bg-secondary">0</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-primary" 
+                                            onclick="event.stopPropagation(); window.location.href='/client/{{ client.id }}/clients/{{ item.client.id }}'"
+                                            title="Открыть карточку">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button class="btn btn-outline-danger" 
+                                            onclick="event.stopPropagation(); deleteClient({{ item.client.id }})"
+                                            title="Удалить">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+        <i class="fas fa-users fa-4x text-muted mb-3"></i>
+        <h3>Клиенты не найдены</h3>
+        <p class="text-muted">Добавьте первого клиента</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Модальное окно добавления клиента -->
+<div class="modal fade" id="addClientModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Добавить клиента</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addClientForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Организационно-правовая форма *</label>
+                                <select class="form-control" name="legal_form" required onchange="validateInn()">
+                                    <option value="">Выберите форму</option>
+                                    <option value="Физическое лицо">Физическое лицо</option>
+                                    <option value="Индивидуальный предприниматель">Индивидуальный предприниматель</option>
+                                    <option value="Общество с ограниченной ответственностью">Общество с ограниченной ответственностью</option>
+                                    <option value="Некоммерческая организация">Некоммерческая организация</option>
+                                    <option value="Автономная некоммерческая организация">Автономная некоммерческая организация</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Наименование организации *</label>
+                                <input type="text" class="form-control" name="organization_name" required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">ИНН</label>
+                                <input type="text" class="form-control" name="inn" id="innInput" maxlength="12" pattern="[0-9]*">
+                                <div class="form-text" id="innHelp"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">ОГРН</label>
+                                <input type="text" class="form-control" name="ogrn" maxlength="13" pattern="[0-9]*">
+                                <div class="form-text">13 цифр</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Система налогообложения *</label>
+                                <select class="form-control" name="tax_system" required>
+                                    <option value="">Выберите систему</option>
+                                    <option value="Общая система налогообложения">Общая система налогообложения</option>
+                                    <option value="Упрощенная система налогообложения (6%)">Упрощенная система налогообложения (6%)</option>
+                                    <option value="Упрощенная система налогообложения (15%)">Упрощенная система налогообложения (15%)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Работодатель</label>
+                                <div class="form-check form-switch mt-2">
+                                    <input class="form-check-input" type="checkbox" name="is_employer" id="isEmployer">
+                                    <label class="form-check-label" for="isEmployer">Является работодателем</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary-custom" onclick="createClient()">Создать</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.clickable-row:hover {
+    background-color: #f8f9fa !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+</style>
+
+<script>
+// Валидация ИНН в зависимости от организационно-правовой формы
+function validateInn() {
+    const legalForm = document.querySelector('select[name="legal_form"]').value;
+    const innInput = document.getElementById('innInput');
+    const innHelp = document.getElementById('innHelp');
+    
+    if (legalForm === 'Индивидуальный предприниматель') {
+        innInput.setAttribute('maxlength', '12');
+        innHelp.textContent = 'Обязательное поле, 12 цифр';
+        innInput.required = true;
+    } else if (['Общество с ограниченной ответственностью', 'Некоммерческая организация', 'Автономная некоммерческая организация'].includes(legalForm)) {
+        innInput.setAttribute('maxlength', '10');
+        innHelp.textContent = '10 цифр';
+        innInput.required = false;
+    } else if (legalForm === 'Физическое лицо') {
+        innInput.setAttribute('maxlength', '12');
+        innHelp.textContent = 'Необязательное поле';
+        innInput.required = false;
+    } else {
+        innHelp.textContent = '';
+        innInput.required = false;
+    }
+}
+
+// Валидация числовых полей
+document.addEventListener('DOMContentLoaded', function() {
+    const numericInputs = document.querySelectorAll('input[pattern="[0-9]*"]');
+    numericInputs.forEach(input => {
+        input.addEventListener('input', function() {
+            this.value = this.value.replace(/[^0-9]/g, '');
+        });
+    });
+});
+
+// Создание клиента
+async function createClient() {
+    const form = document.getElementById('addClientForm');
+    const formData = new FormData(form);
+    
+    // Преобразуем чекбокс в булево значение
+    formData.set('is_employer', formData.get('is_employer') === 'on');
+    
+    // Проверка обязательных полей
+    if (!formData.get('legal_form') || !formData.get('organization_name') || !formData.get('tax_system')) {
+        alert('Пожалуйста, заполните обязательные поля');
+        return;
+    }
+    
+    // Дополнительная валидация ИНН
+    const legalForm = formData.get('legal_form');
+    const inn = formData.get('inn');
+    
+    if (legalForm === 'Индивидуальный предприниматель' && (!inn || inn.length !== 12)) {
+        alert('Для ИП ИНН должен содержать 12 символов');
+        return;
+    }
+    
+    if (['Общество с ограниченной ответственностью', 'Некоммерческая организация', 'Автономная некоммерческая организация'].includes(legalForm) && inn && inn.length !== 10) {
+        alert('Для юридических лиц ИНН должен содержать 10 символов');
+        return;
+    }
+    
+    try {
+        const submitBtn = document.querySelector('#addClientModal .btn-primary-custom');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Создание...';
+        submitBtn.disabled = true;
+        
+        const response = await fetch('/client/{{ client.id }}/clients', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('addClientModal'));
+            modal.hide();
+            form.reset();
+            alert('Клиент успешно создан');
+            location.reload();
+        } else {
+            alert('Ошибка: ' + (result.detail || 'Неизвестная ошибка'));
+        }
+    } catch (error) {
+        console.error('Ошибка создания клиента:', error);
+        alert('Ошибка создания клиента: ' + error.message);
+    } finally {
+        const submitBtn = document.querySelector('#addClientModal .btn-primary-custom');
+        submitBtn.innerHTML = 'Создать';
+        submitBtn.disabled = false;
+    }
+}
+
+// Удаление клиента
+async function deleteClient(clientId) {
+    if (!confirm('Вы уверены, что хотите удалить клиента?')) return;
+    
+    try {
+        const response = await fetch(`/client/{{ client.id }}/clients/${clientId}`, {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            alert('Клиент успешно удален');
+            location.reload();
+        } else {
+            alert('Ошибка: ' + (result.detail || 'Неизвестная ошибка'));
+        }
+    } catch (error) {
+        console.error('Ошибка удаления клиента:', error);
+        alert('Ошибка удаления клиента: ' + error.message);
+    }
+}
+</script>
+{% endblock %}

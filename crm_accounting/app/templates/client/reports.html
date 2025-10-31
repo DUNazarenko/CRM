@@ -1,0 +1,138 @@
+{% extends "client_base.html" %}
+{% block title %}Отчёты - CRM Бухгалтерия{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-0">
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2"><i class="fas fa-file-alt me-2"></i>Список отчётов</h1>
+        <button class="btn btn-primary-custom" data-bs-toggle="modal" data-bs-target="#addReportModal">
+            <i class="fas fa-plus me-2"></i>Добавить отчёт
+        </button>
+    </div>
+
+    {% if reports %}
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title mb-0">Все отчёты</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Сокращённое наименование</th>
+                            <th>Полное наименование</th>
+                            <th>Описание</th>
+                            <th style="width: 100px;">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for report in reports %}
+                        <!-- ИСПРАВЛЕННЫЕ ССЫЛКИ - прямые URL вместо тега url -->
+                        <tr class="clickable-row" onclick="window.location.href='/client/{{ client_id }}/reports/{{ report.id }}'">
+                            <td><strong>{{ report.short_name }}</strong></td>
+                            <td>{{ report.full_name }}</td>
+                            <td>{{ report.description or '—' }}</td>
+                            <td>
+                                <button class="btn btn-outline-primary btn-sm"
+                                        onclick="event.stopPropagation(); window.location.href='/client/{{ client_id }}/reports/{{ report.id }}'">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+        <i class="fas fa-file-alt fa-4x text-muted mb-3"></i>
+        <h3>Отчёты не найдены</h3>
+        <p class="text-muted">Добавьте первый отчёт</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Модалка добавления отчёта -->
+<div class="modal fade" id="addReportModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Добавить отчёт</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addReportForm" method="post" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label class="form-label">Полное наименование *</label>
+                        <textarea name="full_name" class="form-control" rows="2" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Сокращённое наименование *</label>
+                        <input type="text" name="short_name" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Описание</label>
+                        <textarea name="description" class="form-control" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary-custom" onclick="createReport()">
+                    <i class="fas fa-save me-2"></i>Создать
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function createReport() {
+    const form = document.getElementById('addReportForm');
+    const formData = new FormData(form);
+
+    if (!formData.get('full_name') || !formData.get('short_name')) {
+        alert('Пожалуйста, заполните обязательные поля.');
+        return;
+    }
+
+    const btn = document.querySelector('#addReportModal .btn-primary-custom');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Создание...';
+
+    try {
+        // ИСПРАВЛЕННЫЙ URL - прямой путь вместо тега url
+        const response = await fetch('/client/{{ client_id }}/reports', { 
+            method: 'POST', 
+            body: formData 
+        });
+        const result = await response.json();
+
+        if (response.ok) {
+            alert('Отчёт успешно создан');
+            const modal = bootstrap.Modal.getInstance(document.getElementById('addReportModal'));
+            modal.hide();
+            location.reload();
+        } else {
+            alert('Ошибка: ' + (result.detail || 'Неизвестная ошибка'));
+        }
+    } catch (err) {
+        console.error(err);
+        alert('Ошибка при создании отчёта: ' + err.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save me-2"></i>Создать';
+    }
+}
+</script>
+
+<style>
+.clickable-row:hover {
+    background-color: #f8f9fa !important;
+    cursor: pointer;
+}
+</style>
+{% endblock %}

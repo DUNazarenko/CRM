@@ -1,0 +1,410 @@
+<!-- app/templates/index.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 text-center">
+        <div class="hero-section mb-5">
+            <h1 class="hero-title">Добро пожаловать в CRM Бухгалтерской фирмы</h1>
+            <p class="hero-subtitle">Профессиональное управление клиентами и отчетностью</p>
+        </div>
+
+        <div class="row mt-5">
+            <div class="col-md-6 mb-4">
+                <button class="btn btn-primary-custom btn-lg w-100" id="show-login-btn">
+                    <i class="fas fa-sign-in-alt me-2"></i>Вход в CRM
+                </button>
+            </div>
+            <div class="col-md-6 mb-4">
+                <button class="btn btn-outline-secondary btn-lg w-100" id="show-register-btn">
+                    <i class="fas fa-user-plus me-2"></i>Регистрация в CRM
+                </button>
+            </div>
+        </div>
+
+        <!-- Форма входа -->
+        <div id="login-form" class="auth-form" style="display: none;">
+            <h4 class="text-center mb-4"><i class="fas fa-sign-in-alt me-2"></i>Вход в систему</h4>
+            <form id="loginForm">
+                <div class="mb-3">
+                    <label class="form-label">Логин *</label>
+                    <input type="text" class="form-control" name="login" placeholder="Ваш логин в системе" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Пароль *</label>
+                    <input type="password" class="form-control" name="password" placeholder="Пароль для доступа" required>
+                </div>
+                <div class="d-grid gap-2">
+                    <button type="button" class="btn btn-primary-custom" id="login-btn">
+                        <i class="fas fa-sign-in-alt me-2"></i>Войти
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" id="cancel-login-btn">
+                        Отмена
+                    </button>
+                </div>
+                <div class="mt-3">
+                    <button type="button" class="btn btn-sm btn-outline-info" id="debug-login-btn">
+                        <i class="fas fa-bug me-1"></i>Диагностика входа
+                    </button>
+                </div>
+            </form>
+            <div id="debug-result" class="mt-3 p-3 bg-light rounded" style="display: none;">
+                <h6>Результат диагностики:</h6>
+                <pre id="debug-output" class="text-start small"></pre>
+            </div>
+        </div>
+
+        <!-- Форма регистрации -->
+        <div id="register-form" class="auth-form" style="display: none;">
+            <h4 class="text-center mb-4"><i class="fas fa-user-plus me-2"></i>Регистрация в системе</h4>
+            <form id="registerForm">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Email *</label>
+                            <input type="email" class="form-control" name="email" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Телефон *</label>
+                            <input type="tel" class="form-control" name="phone" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Контактное лицо *</label>
+                            <input type="text" class="form-control" name="contact_person" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Логин для системы *</label>
+                            <input type="text" class="form-control" name="login" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Пароль *</label>
+                            <input type="password" class="form-control" name="password" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Название компании</label>
+                            <input type="text" class="form-control" name="company_name">
+                        </div>
+                    </div>
+                </div>
+                <div class="d-grid gap-2">
+                    <button type="button" class="btn btn-primary-custom" id="register-btn">
+                        <i class="fas fa-user-plus me-2"></i>Зарегистрироваться
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" id="cancel-register-btn">
+                        Отмена
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Ссылка на админ панель (для разработки) -->
+        <div class="mt-4">
+            <a href="/admin" class="btn btn-outline-primary">
+                <i class="fas fa-cog me-2"></i>Административная панель
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+.hero-section {
+    background: linear-gradient(135deg, var(--primary-gray) 0%, #3a3a3a 100%);
+    color: white;
+    padding: 60px 0;
+    text-align: center;
+    border-radius: 12px;
+    margin-bottom: 40px;
+}
+
+.hero-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+}
+
+.hero-subtitle {
+    font-size: 1.1rem;
+    opacity: 0.9;
+    margin-bottom: 0;
+}
+
+.btn-primary-custom {
+    background: linear-gradient(135deg, var(--primary-orange) 0%, #ff4b2b 100%);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-weight: 500;
+    padding: 12px 24px;
+    transition: all 0.3s ease;
+}
+
+.btn-primary-custom:hover {
+    background: linear-gradient(135deg, #d42916 0%, #e6311d 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(230, 49, 29, 0.3);
+}
+
+.auth-form {
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 30px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    margin-top: 20px;
+}
+
+.form-control {
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 10px 12px;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus {
+    border-color: var(--primary-orange);
+    box-shadow: 0 0 0 3px rgba(230, 49, 29, 0.1);
+}
+
+:root {
+    --primary-gray: #555453;
+    --primary-orange: #e6311d;
+    --bg-color: #f8fafc;
+    --surface-color: #ffffff;
+    --text-primary: #323130;
+    --text-secondary: #605e5c;
+    --border-color: #edebe9;
+    --hover-color: #f3f2f1;
+}
+
+body {
+    background-color: var(--bg-color);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    color: var(--text-primary);
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Функции для управления формами
+function showLoginForm() {
+    hideForms();
+    document.getElementById('login-form').style.display = 'block';
+}
+
+function showRegisterForm() {
+    hideForms();
+    document.getElementById('register-form').style.display = 'block';
+}
+
+function hideForms() {
+    document.getElementById('login-form').style.display = 'none';
+    document.getElementById('register-form').style.display = 'none';
+    document.getElementById('debug-result').style.display = 'none';
+}
+
+// Функция диагностики входа
+async function debugLogin() {
+    const form = document.getElementById('loginForm');
+    const formData = new FormData(form);
+    
+    const loginData = {
+        login: formData.get('login'),
+        password: formData.get('password')
+    };
+    
+    if (!loginData.login || !loginData.password) {
+        alert('Пожалуйста, заполните все поля для диагностики');
+        return;
+    }
+    
+    try {
+        const debugBtn = document.getElementById('debug-login-btn');
+        const originalText = debugBtn.innerHTML;
+        debugBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Диагностика...';
+        debugBtn.disabled = true;
+        
+        console.log('Запуск диагностики для:', loginData);
+        
+        const debugResponse = await fetch(`/api/debug/client/${encodeURIComponent(loginData.login)}?password=${encodeURIComponent(loginData.password)}`);
+        const debugResult = await debugResponse.json();
+        
+        console.log('Результат диагностики:', debugResult);
+        
+        // Показываем результат диагностики
+        document.getElementById('debug-output').textContent = JSON.stringify(debugResult, null, 2);
+        document.getElementById('debug-result').style.display = 'block';
+        
+    } catch (error) {
+        console.error('Ошибка диагностики:', error);
+        document.getElementById('debug-output').textContent = 'Ошибка диагностики: ' + error.message;
+        document.getElementById('debug-result').style.display = 'block';
+    } finally {
+        const debugBtn = document.getElementById('debug-login-btn');
+        debugBtn.innerHTML = '<i class="fas fa-bug me-1"></i>Диагностика входа';
+        debugBtn.disabled = false;
+    }
+}
+
+// Функция входа
+async function handleLogin() {
+    const form = document.getElementById('loginForm');
+    const formData = new FormData(form);
+    
+    const loginData = {
+        login: formData.get('login'),
+        password: formData.get('password')
+    };
+    
+    if (!loginData.login || !loginData.password) {
+        alert('Пожалуйста, заполните все поля');
+        return;
+    }
+    
+    try {
+        // Показываем индикатор загрузки
+        const submitBtn = document.getElementById('login-btn');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Вход...';
+        submitBtn.disabled = true;
+        
+        console.log('Отправка запроса на вход:', loginData);
+        
+        const response = await fetch('/client/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(loginData)
+        });
+        
+        console.log('Статус ответа:', response.status);
+        console.log('Заголовки ответа:', response.headers);
+        
+        const result = await response.json();
+        console.log('Тело ответа:', result);
+        
+        if (response.ok) {
+            console.log('Успешный вход, редирект на:', result.redirect_url);
+            window.location.href = result.redirect_url;
+        } else {
+            console.error('Ошибка входа:', result);
+            alert('Ошибка входа: ' + (result.detail || 'Неизвестная ошибка'));
+        }
+    } catch (error) {
+        console.error('Ошибка входа:', error);
+        alert('Ошибка входа: ' + error.message);
+    } finally {
+        // Восстанавливаем кнопку
+        const submitBtn = document.getElementById('login-btn');
+        submitBtn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>Войти';
+        submitBtn.disabled = false;
+    }
+}
+
+// Функция регистрации
+async function handleRegister() {
+    const form = document.getElementById('registerForm');
+    const formData = new FormData(form);
+    
+    const clientData = {
+        email: formData.get('email'),
+        phone: formData.get('phone'),
+        contact_person: formData.get('contact_person'),
+        login: formData.get('login'),
+        password: formData.get('password'),
+        company_name: formData.get('company_name'),
+        create_database: true
+    };
+    
+    // Валидация обязательных полей
+    if (!clientData.email || !clientData.phone || !clientData.contact_person || 
+        !clientData.login || !clientData.password) {
+        alert('Пожалуйста, заполните все обязательные поля (отмечены *)');
+        return;
+    }
+    
+    // Валидация email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(clientData.email)) {
+        alert('Пожалуйста, введите корректный email адрес');
+        return;
+    }
+    
+    try {
+        const submitBtn = document.getElementById('register-btn');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Создание аккаунта...';
+        submitBtn.disabled = true;
+        
+        const response = await fetch('/api/admin/clients', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(clientData)
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            if (result.database_name) {
+                alert('Регистрация прошла успешно! Ваша база данных автоматически создана. Теперь вы можете войти в систему.');
+            } else {
+                alert('Регистрация прошла успешно! Администратор активирует ваш аккаунт и создаст базу данных.');
+            }
+            hideForms();
+            form.reset();
+        } else {
+            alert('Ошибка: ' + (result.detail || 'Неизвестная ошибка'));
+        }
+    } catch (error) {
+        console.error('Ошибка регистрации:', error);
+        alert('Ошибка регистрации: ' + error.message);
+    } finally {
+        const submitBtn = document.getElementById('register-btn');
+        submitBtn.innerHTML = '<i class="fas fa-user-plus me-2"></i>Зарегистрироваться';
+        submitBtn.disabled = false;
+    }
+}
+
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    // Скрываем формы при загрузке
+    hideForms();
+    
+    // Назначаем обработчики событий
+    document.getElementById('show-login-btn').addEventListener('click', showLoginForm);
+    document.getElementById('show-register-btn').addEventListener('click', showRegisterForm);
+    document.getElementById('login-btn').addEventListener('click', handleLogin);
+    document.getElementById('register-btn').addEventListener('click', handleRegister);
+    document.getElementById('cancel-login-btn').addEventListener('click', hideForms);
+    document.getElementById('cancel-register-btn').addEventListener('click', hideForms);
+    document.getElementById('debug-login-btn').addEventListener('click', debugLogin);
+    
+    // Обработка отправки формы по Enter
+    document.getElementById('loginForm').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            handleLogin();
+        }
+    });
+});
+</script>
+{% endblock %}

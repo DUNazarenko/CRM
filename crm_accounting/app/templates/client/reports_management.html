@@ -1,0 +1,258 @@
+<!-- app/templates/client/reports_management.html -->
+{% extends "client_base.html" %}
+
+{% block title %}Управление отчетами - CRM Бухгалтерия{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-0">
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2"><i class="fas fa-file-alt me-2"></i>Управление отчетами</h1>
+        <div>
+            <button class="btn btn-primary-custom" data-bs-toggle="modal" data-bs-target="#addReportModal">
+                <i class="fas fa-plus me-2"></i>Добавить отчет
+            </button>
+        </div>
+    </div>
+
+    {% if reports_with_periods %}
+    <div class="row">
+        {% for item in reports_with_periods %}
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">{{ item.report.short_name }}</h5>
+                    <button class="btn btn-sm btn-outline-primary" 
+                            data-bs-toggle="modal" 
+                            data-bs-target="#addPeriodModal"
+                            data-report-id="{{ item.report.id }}"
+                            data-report-name="{{ item.report.short_name }}"
+                            onclick="setReportId(this)">
+                        <i class="fas fa-plus me-1"></i>Добавить период
+                    </button>
+                </div>
+                <div class="card-body">
+                    <p><strong>Полное наименование:</strong> {{ item.report.full_name }}</p>
+                    {% if item.report.description %}
+                    <p><strong>Описание:</strong> {{ item.report.description }}</p>
+                    {% endif %}
+                    
+                    <h6 class="mt-4">Периоды сдачи:</h6>
+                    {% if item.periods %}
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Период</th>
+                                    <th>Год</th>
+                                    <th>Срок сдачи</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for period in item.periods %}
+                                <tr>
+                                    <td>{{ period.period }}</td>
+                                    <td>{{ period.year }}</td>
+                                    <td>{{ period.due_date.strftime('%d.%m.%Y') }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted">Периоды не добавлены</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+        <i class="fas fa-file-alt fa-4x text-muted mb-3"></i>
+        <h3>Отчеты не найдены</h3>
+        <p class="text-muted">Добавьте первый отчет</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Модальное окно добавления отчета -->
+<div class="modal fade" id="addReportModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Добавить отчет</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addReportForm">
+                    <div class="mb-3">
+                        <label class="form-label">Полное наименование *</label>
+                        <textarea class="form-control" name="full_name" rows="2" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Сокращенное наименование *</label>
+                        <input type="text" class="form-control" name="short_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Описание</label>
+                        <textarea class="form-control" name="description" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary-custom" onclick="createReport()">Создать</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно добавления периода -->
+<div class="modal fade" id="addPeriodModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Добавить период для отчета: <span id="reportName"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addPeriodForm">
+                    <input type="hidden" id="reportId" name="report_id">
+                    <div class="mb-3">
+                        <label class="form-label">Период *</label>
+                        <select class="form-control" name="period" required>
+                            <option value="">Выберите период</option>
+                            <option value="1 квартал">1 квартал</option>
+                            <option value="2 квартал">2 квартал</option>
+                            <option value="3 квартал">3 квартал</option>
+                            <option value="4 квартал">4 квартал</option>
+                            <option value="январь">январь</option>
+                            <option value="февраль">февраль</option>
+                            <option value="март">март</option>
+                            <option value="апрель">апрель</option>
+                            <option value="май">май</option>
+                            <option value="июнь">июнь</option>
+                            <option value="июль">июль</option>
+                            <option value="август">август</option>
+                            <option value="сентябрь">сентябрь</option>
+                            <option value="октябрь">октябрь</option>
+                            <option value="ноябрь">ноябрь</option>
+                            <option value="декабрь">декабрь</option>
+                            <option value="полугодие">полугодие</option>
+                            <option value="девять месяцев">девять месяцев</option>
+                            <option value="год">год</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Год *</label>
+                        <input type="number" class="form-control" name="year" value="{{ today.year }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Срок сдачи *</label>
+                        <input type="date" class="form-control" name="due_date" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary-custom" onclick="createReportPeriod()">Добавить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentReportId = null;
+
+function setReportId(button) {
+    currentReportId = button.getAttribute('data-report-id');
+    const reportName = button.getAttribute('data-report-name');
+    document.getElementById('reportId').value = currentReportId;
+    document.getElementById('reportName').textContent = reportName;
+}
+
+// Создание отчета
+async function createReport() {
+    const form = document.getElementById('addReportForm');
+    const formData = new FormData(form);
+    
+    if (!formData.get('full_name') || !formData.get('short_name')) {
+        alert('Пожалуйста, заполните обязательные поля');
+        return;
+    }
+    
+    try {
+        const submitBtn = document.querySelector('#addReportModal .btn-primary-custom');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Создание...';
+        submitBtn.disabled = true;
+        
+        const response = await fetch('/client/{{ client.id }}/reports', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('addReportModal'));
+            modal.hide();
+            form.reset();
+            alert('Отчет успешно создан');
+            location.reload();
+        } else {
+            alert('Ошибка: ' + (result.detail || 'Неизвестная ошибка'));
+        }
+    } catch (error) {
+        console.error('Ошибка создания отчета:', error);
+        alert('Ошибка создания отчета: ' + error.message);
+    } finally {
+        const submitBtn = document.querySelector('#addReportModal .btn-primary-custom');
+        submitBtn.innerHTML = 'Создать';
+        submitBtn.disabled = false;
+    }
+}
+
+// Создание периода отчета
+async function createReportPeriod() {
+    const form = document.getElementById('addPeriodForm');
+    const formData = new FormData(form);
+    
+    if (!formData.get('period') || !formData.get('year') || !formData.get('due_date')) {
+        alert('Пожалуйста, заполните все поля');
+        return;
+    }
+    
+    try {
+        const submitBtn = document.querySelector('#addPeriodModal .btn-primary-custom');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Добавление...';
+        submitBtn.disabled = true;
+        
+        const response = await fetch(`/client/{{ client.id }}/reports/${currentReportId}/periods`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('addPeriodModal'));
+            modal.hide();
+            form.reset();
+            alert('Период отчета успешно добавлен');
+            location.reload();
+        } else {
+            alert('Ошибка: ' + (result.detail || 'Неизвестная ошибка'));
+        }
+    } catch (error) {
+        console.error('Ошибка создания периода отчета:', error);
+        alert('Ошибка создания периода отчета: ' + error.message);
+    } finally {
+        const submitBtn = document.querySelector('#addPeriodModal .btn-primary-custom');
+        submitBtn.innerHTML = 'Добавить';
+        submitBtn.disabled = false;
+    }
+}
+</script>
+{% endblock %}

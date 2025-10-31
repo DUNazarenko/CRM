@@ -1,0 +1,335 @@
+{% extends "client_base.html" %}
+{% block title %}Календарь отчетов - CRM Бухгалтерия{% endblock %}
+
+{% block content %}
+<div class="calendar-container">
+
+  <!-- Заголовок страницы -->
+  <div class="calendar-header">
+    <div class="calendar-title">
+      <i class="fas fa-calendar-alt me-2"></i>Календарь отчетов
+    </div>
+    <form id="calendarForm" method="post" action="/client/{{ client.id }}/calendar/generate" class="calendar-form">
+      <label>Период:</label>
+      <input type="date" name="start_date" value="{{ selected_start_date or start_date_default }}" required>
+      <span>–</span>
+      <input type="date" name="end_date" value="{{ selected_end_date or end_date_default }}" required>
+      <button type="submit" class="btn-generate">
+        <i class="fas fa-sync-alt me-1"></i>Сформировать
+      </button>
+    </form>
+  </div>
+
+  {% if date_columns and clients_data %}
+  <div class="calendar-table-wrapper">
+    <table class="calendar-table">
+      <thead>
+        <!-- 1 строка: даты -->
+        <tr>
+          <th rowspan="3" class="client-col">Клиент</th>
+          {% for column in date_columns %}
+          {% if loop.first or date_columns[loop.index0-1].due_date != column.due_date %}
+          <th colspan="{{ date_columns|selectattr('due_date', 'equalto', column.due_date)|list|length }}" class="date-header">
+            {{ column.due_date.strftime('%d.%m.%Y') }}
+          </th>
+          {% endif %}
+          {% endfor %}
+        </tr>
+        <!-- 2 строка: отчёты -->
+        <tr>
+          {% for column in date_columns %}
+          <th class="report-header">{{ column.report_name }}</th>
+          {% endfor %}
+        </tr>
+        <!-- 3 строка: периоды -->
+        <tr>
+          {% for column in date_columns %}
+          <th class="period-header">{{ column.period }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+
+      <tbody>
+        {% for client_row in clients_data %}
+        <tr class="client-row">
+          <td class="client-name">
+            <i class="fas fa-building me-1"></i>{{ client_row.name }}
+          </td>
+          {% for col_idx in range(date_columns|length) %}
+          {% set cell = client_row.cells[col_idx] %}
+          <td class="status-cell">
+            {% if cell %}
+            <select class="status-select" data-entry-id="{{ cell.calendar_entry_id }}" data-client-id="{{ client.id }}">
+              {% for s in allowed_statuses %}
+              <option value="{{ s }}" {% if s == cell.status %}selected{% endif %}>{{ s }}</option>
+              {% endfor %}
+            </select>
+            {% else %}
+            <span class="empty">–</span>
+            {% endif %}
+          </td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% elif selected_start_date and selected_end_date %}
+  <div class="no-data-block">
+    <i class="fas fa-calendar-times fa-3x mb-3 text-muted"></i>
+    <h5>Нет данных для выбранного периода</h5>
+  </div>
+  {% endif %}
+</div>
+
+<!-- 🎨 Стили -->
+<style>
+:root {
+  --gray: #555453;
+  --orange: #e6311d;
+  --border: #e0e0e0;
+  --light-bg: #f9f9f9;
+  --radius: 12px;
+  --green: #4caf50;
+  --sand: #f3c86a;
+  --gray-status: #a9a9a9;
+}
+
+/* Общий контейнер */
+.calendar-container {
+  font-family: "Segoe UI", Roboto, sans-serif;
+  color: var(--gray);
+  padding: 20px;
+}
+
+/* Заголовок */
+.calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  background: #fff;
+  border-radius: var(--radius);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+  padding: 12px 18px;
+  margin-bottom: 20px;
+}
+.calendar-title {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--orange);
+}
+.calendar-form {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.calendar-form input {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 0.9rem;
+}
+.btn-generate {
+  background: var(--orange);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s ease-in-out;
+}
+.btn-generate:hover {
+  background: #c72a18;
+}
+
+/* Таблица */
+.calendar-table-wrapper {
+  background: #fff;
+  border-radius: var(--radius);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  overflow-x: auto;
+}
+.calendar-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  text-align: center;
+  border-radius: var(--radius);
+}
+.calendar-table th,
+.calendar-table td {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+}
+.calendar-table thead th {
+  font-weight: 600;
+  user-select: none;
+}
+
+/* Заголовки */
+.date-header {
+  background: var(--orange);
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.9rem;
+  border-bottom: 2px solid #c52b17;
+}
+.report-header {
+  background: #f2f2f2;
+  color: #333;
+  font-weight: 500;
+}
+.period-header {
+  background: #fafafa;
+  color: #777;
+  font-size: 0.8rem;
+}
+.client-col {
+  width: 240px;
+  background: var(--gray);
+  color: white;
+  font-weight: 600;
+}
+
+/* Клиентские строки */
+.client-row {
+  transition: background-color 0.25s ease;
+}
+.client-row:hover {
+  background-color: rgba(230, 49, 29, 0.18);
+}
+.client-name {
+  text-align: left;
+  font-weight: 500;
+  color: #333;
+}
+
+/* Ячейки со статусами */
+.status-cell {
+  vertical-align: middle;
+}
+.status-select {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  width: 100%;
+  cursor: pointer;
+  text-align: center;
+  color: #fff;
+  font-weight: 500;
+  transition: all 0.25s;
+}
+.status-select:hover {
+  border-color: var(--orange);
+  box-shadow: 0 0 0 3px rgba(230, 49, 29, 0.15);
+}
+
+/* Цвета статусов */
+.status-select option[value="не сдан"] { background: var(--orange); color: #fff; }
+.status-select option[value="сдан"] { background: var(--green); color: #fff; }
+.status-select option[value="в работе"] { background: var(--sand); color: #333; }
+.status-select option[value="не сдается"] { background: var(--gray-status); color: #fff; }
+
+/* Цвет выбранного статуса */
+.status-select[value="не сдан"], .status-select option:checked[value="не сдан"] { background: var(--orange); color: #fff; }
+.status-select[value="сдан"], .status-select option:checked[value="сдан"] { background: var(--green); color: #fff; }
+.status-select[value="в работе"], .status-select option:checked[value="в работе"] { background: var(--sand); color: #333; }
+.status-select[value="не сдается"], .status-select option:checked[value="не сдается"] { background: var(--gray-status); color: #fff; }
+
+/* Пустая ячейка */
+.empty {
+  color: #bbb;
+}
+
+/* Нет данных */
+.no-data-block {
+  text-align: center;
+  padding: 50px;
+  color: #888;
+}
+
+/* Hover подсветка при фокусе на селекте */
+.status-select:focus {
+  outline: none;
+  border-color: var(--orange);
+  box-shadow: 0 0 0 3px rgba(230, 49, 29, 0.35);
+}
+</style>
+
+<!-- JS -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const selects = document.querySelectorAll('.status-select');
+  selects.forEach(sel => {
+    // при фокусе или наведении подсвечиваем строку
+    sel.addEventListener('focus', e => highlightRow(e, true));
+    sel.addEventListener('mouseover', e => highlightRow(e, true));
+    sel.addEventListener('blur', e => highlightRow(e, false));
+    sel.addEventListener('mouseout', e => highlightRow(e, false));
+
+    // обновление статуса
+    sel.addEventListener('change', async e => {
+      const selectEl = e.target;
+      const newStatus = selectEl.value;
+      const entryId = selectEl.dataset.entryId;
+      const clientId = selectEl.dataset.clientId;
+
+      applyStatusColor(selectEl, newStatus);
+
+      selectEl.disabled = true;
+      try {
+        const resp = await fetch(`/client/${clientId}/calendar/update-status`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            calendar_entry_id: parseInt(entryId, 10),
+            new_status: newStatus
+          })
+        });
+        const result = await resp.json();
+        if (!resp.ok || !result.success) {
+          alert('Ошибка: ' + (result.detail || 'Не удалось обновить статус'));
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Ошибка обновления статуса');
+      } finally {
+        selectEl.disabled = false;
+      }
+    });
+
+    // применяем цвет при загрузке
+    applyStatusColor(sel, sel.value);
+  });
+
+  function applyStatusColor(select, status) {
+    if (status === 'не сдан') {
+      select.style.backgroundColor = '#e6311d';
+      select.style.color = '#fff';
+    } else if (status === 'сдан') {
+      select.style.backgroundColor = '#4caf50';
+      select.style.color = '#fff';
+    } else if (status === 'в работе') {
+      select.style.backgroundColor = '#f3c86a';
+      select.style.color = '#333';
+    } else if (status === 'не сдается') {
+      select.style.backgroundColor = '#a9a9a9';
+      select.style.color = '#fff';
+    } else {
+      select.style.backgroundColor = '#fff';
+      select.style.color = '#333';
+    }
+  }
+
+  function highlightRow(event, active) {
+    const row = event.target.closest('.client-row');
+    if (row) row.style.backgroundColor = active ? 'rgba(230,49,29,0.25)' : '';
+  }
+});
+</script>
+{% endblock %}

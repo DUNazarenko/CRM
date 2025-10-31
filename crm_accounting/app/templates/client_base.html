@@ -1,0 +1,226 @@
+<!-- app/templates/client_base.html -->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}CRM Бухгалтерия{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-gray: #555453;
+            --primary-orange: #e6311d;
+            --bg-color: #f8fafc;
+            --surface-color: #ffffff;
+            --text-primary: #323130;
+            --text-secondary: #605e5c;
+            --border-color: #edebe9;
+            --hover-color: #f3f2f1;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            color: var(--text-primary);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+
+        .navbar-custom {
+            background: linear-gradient(135deg, var(--primary-gray) 0%, #3a3a3a 100%);
+            border-bottom: 3px solid var(--primary-orange);
+            padding: 0;
+        }
+
+        .navbar-brand-custom {
+            display: flex;
+            align-items: center;
+            padding: 10px 15px;
+            color: white !important;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .navbar-brand-custom .logo-container {
+            display: flex;
+            align-items: center;
+            margin-right: 15px;
+        }
+
+        .navbar-brand-custom .logo-img {
+            max-height: 40px;
+            max-width: 40px;
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+
+        .navbar-brand-custom .company-name {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: white;
+        }
+
+        .navbar-nav .nav-link {
+            color: rgba(255, 255, 255, 0.9) !important;
+            font-weight: 500;
+            padding: 15px 20px;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+        }
+
+        .navbar-nav .nav-link:hover,
+        .navbar-nav .nav-link.active {
+            color: white !important;
+            background: rgba(255, 255, 255, 0.1);
+            border-bottom: 3px solid var(--primary-orange);
+        }
+
+        .navbar-title {
+            color: white;
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin: 0;
+            padding: 15px 20px;
+        }
+
+        .main-container {
+            padding: 0;
+            margin: 0;
+            width: 100%;
+            min-height: calc(100vh - 56px);
+        }
+
+        .content-wrapper {
+            padding: 20px;
+            width: 100%;
+        }
+
+        .btn-primary-custom {
+            background: linear-gradient(135deg, var(--primary-orange) 0%, #ff4b2b 100%);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-weight: 500;
+            padding: 10px 20px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary-custom:hover {
+            background: linear-gradient(135deg, #d42916 0%, #e6311d 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(230, 49, 29, 0.3);
+        }
+
+        .card {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            margin-bottom: 20px;
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, var(--primary-gray) 0%, #636261 100%);
+            color: white;
+            border-bottom: none;
+            padding: 16px 20px;
+            font-weight: 600;
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Верхняя навигация -->
+    <nav class="navbar navbar-expand-lg navbar-custom">
+        <div class="container-fluid">
+            <!-- Логотип и название компании слева -->
+            <a class="navbar-brand-custom" href="/client/{{ client.id }}/dashboard">
+                <div class="logo-container">
+                    {% if logo_base64 %}
+                    <img src="data:image/png;base64,{{ logo_base64 }}" alt="Логотип" class="logo-img">
+                    {% else %}
+                    <i class="fas fa-building fa-lg me-2"></i>
+                    {% endif %}
+                    <span class="company-name">{{ company_settings.company_name or "Моя компания" }}</span>
+                </div>
+            </a>
+
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <!-- Название системы по центру -->
+            <div class="navbar-title mx-auto d-none d-lg-block">
+                <i class="fas fa-calculator me-2"></i>CRM Бухгалтерия
+            </div>
+
+            <!-- Меню справа -->
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.url.path == '/client/' ~ client.id ~ '/dashboard' %}active{% endif %}" 
+                           href="/client/{{ client.id }}/dashboard">
+                            <i class="fas fa-tachometer-alt me-1"></i>Дашборд
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.url.path == '/client/' ~ client.id ~ '/clients' %}active{% endif %}" 
+                           href="/client/{{ client.id }}/clients">
+                            <i class="fas fa-users me-1"></i>Клиенты
+                        </a>
+                    </li>
+                    <!-- Новый пункт меню - Справочник календаря -->
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.url.path == '/client/' ~ client.id ~ '/calendar_handbook' %}active{% endif %}" 
+                           href="/client/{{ client.id }}/calendar_handbook">
+                            <i class="fas fa-book me-1"></i>Справочник календаря
+                        </a>
+                    </li>
+                    <!-- Новый пункт меню - Календарь -->
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.url.path == '/client/' ~ client.id ~ '/calendar' %}active{% endif %}" 
+                           href="/client/{{ client.id }}/calendar">
+                            <i class="fas fa-calendar me-1"></i>Календарь
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.url.path == '/client/' ~ client.id ~ '/users' %}active{% endif %}" 
+                           href="/client/{{ client.id }}/users">
+                            <i class="fas fa-user-plus me-1"></i>Пользователи
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.url.path == '/client/' ~ client.id ~ '/organizations' %}active{% endif %}" 
+                           href="/client/{{ client.id }}/organizations">
+                            <i class="fas fa-building me-1"></i>Организации
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.url.path == '/client/' ~ client.id ~ '/reports' %}active{% endif %}" 
+                           href="/client/{{ client.id }}/reports">
+                            <i class="fas fa-file-alt me-1"></i>Отчеты
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.url.path == '/client/' ~ client.id ~ '/settings' %}active{% endif %}" 
+                           href="/client/{{ client.id }}/settings">
+                            <i class="fas fa-cog me-1"></i>Настройки
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Основной контент -->
+    <div class="main-container">
+        <div class="content-wrapper">
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

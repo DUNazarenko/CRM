@@ -1,0 +1,557 @@
+<!-- app/templates/client/client_card.html -->
+{% extends "client_base.html" %}
+{% block title %}{{ client_db.organization_name }} - CRM Бухгалтерия{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-0">
+
+    <!-- Заголовок -->
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2"><i class="fas fa-user me-2"></i>Карточка клиента: {{ client_db.organization_name }}</h1>
+        <div>
+            <a href="/client/{{ client.id }}/clients" class="btn btn-outline-secondary me-2">
+                <i class="fas fa-arrow-left me-2"></i>Назад к списку
+            </a>
+            <button class="btn btn-outline-danger" onclick="deleteClient({{ client_db.id }})">
+                <i class="fas fa-trash me-2"></i>Удалить клиента
+            </button>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Левая колонка — общая информация -->
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Общая информация</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Наименование:</strong> {{ client_db.organization_name }}</p>
+                    <p><strong>Орг.-правовая форма:</strong> {{ client_db.legal_form }}</p>
+                    <p><strong>ИНН:</strong> {{ client_db.inn or '—' }}</p>
+                    <p><strong>ОГРН:</strong> {{ client_db.ogrn or '—' }}</p>
+                    <p><strong>Система налогообложения:</strong> {{ client_db.tax_system }}</p>
+                    <p><strong>Работодатель:</strong>
+                        {% if client_db.is_employer %}
+                            <span class="badge bg-success">Да</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Нет</span>
+                        {% endif %}
+                    </p>
+                    <p><strong>Дата создания:</strong>
+                        {{ client_db.created_at.strftime('%d.%m.%Y %H:%M') if client_db.created_at else '—' }}
+                    </p>
+                    <p><strong>Последнее обновление:</strong>
+                        {{ client_db.updated_at.strftime('%d.%m.%Y %H:%M') if client_db.updated_at else '—' }}
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Правая колонка — ЭЦП -->
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-certificate me-2"></i>Электронные подписи (ЭЦП)</h5>
+                    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addSignatureModal">
+                        <i class="fas fa-plus me-1"></i>Добавить ЭЦП
+                    </button>
+                </div>
+                <div class="card-body">
+                    {% if signatures %}
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>Владелец</th>
+                                        <th>Номер сертификата</th>
+                                        <th>Начало</th>
+                                        <th>Окончание</th>
+                                        <th>Статус</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                {% for s in signatures %}
+                                    {% set days_left = (s.end_date - today).days if s.end_date else 9999 %}
+                                    <tr class="{% if days_left < 0 %}table-danger{% elif days_left < 10 %}table-warning{% endif %}">
+                                        <td>{{ s.owner_name }}</td>
+                                        <td>{{ s.certificate_number or '—' }}</td>
+                                        <td>{{ s.start_date.strftime('%d.%m.%Y') if s.start_date else '—' }}</td>
+                                        <td>{{ s.end_date.strftime('%d.%m.%Y') if s.end_date else '—' }}</td>
+                                        <td>
+                                            {% if days_left < 0 %}
+                                                <span class="badge bg-danger">Просрочена</span>
+                                            {% elif days_left < 10 %}
+                                                <span class="badge bg-warning text-dark">Истекает ({{ days_left }} дн.)</span>
+                                            {% else %}
+                                                <span class="badge bg-success">Действует</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-danger" onclick="deleteSignature({{ s.id }})">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted text-center mb-0 py-3">
+                            <i class="fas fa-certificate text-secondary me-2"></i>ЭЦП не добавлены
+                        </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- === Отчёты клиента === -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-file-alt me-2"></i>Отчёты клиента</h5>
+            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addReportModal">
+                <i class="fas fa-plus me-1"></i>Добавить отчёт
+            </button>
+        </div>
+        <div class="card-body">
+            <div id="reportsContainer">
+                <div class="text-muted text-center mb-0 py-3" id="reportsEmpty">
+                    <i class="fas fa-file text-secondary me-2"></i>Загрузка отчётов...
+                </div>
+                <div class="table-responsive d-none" id="reportsTableWrap">
+                    <table class="table table-striped table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th style="width:1%">Действие отчёта</th>
+                                <th>Отчёт</th>
+                                <th>Периоды</th>
+                                <th style="width:1%">Действия с периодами</th>
+                                <th style="width:1%">Добавить период</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reportsTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модалка: Добавить отчёт -->
+    <div class="modal fade" id="addReportModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Добавить отчёт клиенту</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="availableReportsWrap">
+                        <div class="text-muted text-center py-3" id="availableEmpty">
+                            Загрузка справочника отчётов...
+                        </div>
+                        <div class="table-responsive d-none" id="availableTableWrap">
+                            <table class="table table-hover align-middle">
+                                <thead>
+                                    <tr>
+                                        <th style="width:1%"></th>
+                                        <th>Наименование</th>
+                                        <th>Краткое</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="availableTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модалка: Добавить ЭЦП (добавлено) -->
+    <div class="modal fade" id="addSignatureModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Добавить ЭЦП для {{ client_db.organization_name }}</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <form id="addSignatureForm">
+              <input type="hidden" name="client_id" value="{{ client_db.id }}">
+              <div class="mb-3">
+                <label class="form-label">Владелец *</label>
+                <input type="text" name="owner_name" class="form-control" required>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Номер сертификата</label>
+                <input type="text" name="certificate_number" class="form-control">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Дата начала *</label>
+                <input type="date" name="start_date" class="form-control" required>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Дата окончания *</label>
+                <input type="date" name="end_date" class="form-control" required>
+              </div>
+              <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" name="is_active" id="is_active" checked>
+                <label class="form-check-label" for="is_active">Активна</label>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+            <button class="btn btn-primary" onclick="createDigitalSignature()">Добавить</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Модалка: Добавить период -->
+    <div class="modal fade" id="addPeriodModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Добавить период</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addPeriodForm">
+                        <input type="hidden" name="template_id" id="periodTemplateId">
+                        <div class="mb-3">
+                            <label class="form-label">Дата начала *</label>
+                            <input type="date" class="form-control" name="start_date" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Дата окончания</label>
+                            <input type="date" class="form-control" name="end_date">
+                        </div>
+                    </form>
+                    <small class="text-muted">Период сохраняется в истории (client_report_history).</small>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button class="btn btn-primary" onclick="submitAddPeriod()">Добавить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модалка: Редактировать период -->
+    <div class="modal fade" id="editPeriodModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Редактировать период</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <form id="editPeriodForm">
+              <input type="hidden" name="history_id" id="editHistoryId">
+              <div class="mb-3">
+                <label class="form-label">Дата начала *</label>
+                <input type="date" class="form-control" name="start_date" id="editStartDate" required>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Дата окончания</label>
+                <input type="date" class="form-control" name="end_date" id="editEndDate">
+              </div>
+            </form>
+            <small class="text-muted">Изменения сохраняются в истории (client_report_history).</small>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+            <button class="btn btn-primary" onclick="submitEditPeriod()">Сохранить</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+</div>
+
+<script>
+// === ЭЦП ===
+async function createDigitalSignature() {
+    const form = document.getElementById('addSignatureForm');
+    const formData = new FormData(form);
+    try {
+        const response = await fetch(`/client/{{ client.id }}/clients/{{ client_db.id }}/signatures`, {
+            method: 'POST',
+            body: formData
+        });
+        if (response.ok) {
+            alert('ЭЦП успешно добавлена');
+            location.reload();
+        } else {
+            const res = await response.json();
+            alert('Ошибка: ' + (res.detail || 'Неизвестная ошибка'));
+        }
+    } catch (err) {
+        alert('Ошибка отправки запроса: ' + err.message);
+    }
+}
+async function deleteSignature(signatureId) {
+    if (!confirm('Удалить ЭЦП?')) return;
+    try {
+        const response = await fetch(`/client/{{ client.id }}/signatures/${signatureId}`, { method: 'DELETE' });
+        if (response.ok) {
+            alert('ЭЦП удалена');
+            location.reload();
+        } else {
+            const res = await response.json();
+            alert('Ошибка: ' + (res.detail || 'Неизвестная ошибка'));
+        }
+    } catch (err) {
+        alert('Ошибка удаления: ' + err.message);
+    }
+}
+async function deleteClient(clientId) {
+    if (!confirm('Вы уверены, что хотите удалить клиента?')) return;
+    try {
+        const response = await fetch(`/client/{{ client.id }}/clients/${clientId}`, { method: 'DELETE' });
+        if (response.ok) {
+            alert('Клиент удалён');
+            window.location.href = `/client/{{ client.id }}/clients`;
+        } else {
+            const res = await response.json();
+            alert('Ошибка: ' + (res.detail || 'Неизвестная ошибка'));
+        }
+    } catch (err) {
+        alert('Ошибка удаления клиента: ' + err.message);
+    }
+}
+
+// === Логика отчётов клиента ===
+document.addEventListener('DOMContentLoaded', () => {
+    loadClientReports();
+    const addReportModal = document.getElementById('addReportModal');
+    addReportModal.addEventListener('show.bs.modal', loadAvailableReports, { once: false });
+});
+
+async function loadClientReports() {
+    const placeholder = document.getElementById('reportsEmpty');
+    const tableWrap = document.getElementById('reportsTableWrap');
+    const tbody = document.getElementById('reportsTableBody');
+
+    placeholder.classList.remove('d-none');
+    tableWrap.classList.add('d-none');
+
+    try {
+        const res = await fetch(`/client/{{ client.id }}/assigned-reports.json`);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const rows = await res.json();
+
+        if (!rows || rows.length === 0) {
+            placeholder.innerHTML = '<i class="fas fa-file text-secondary me-2"></i>Нет закреплённых отчётов';
+            return;
+        }
+
+        tbody.innerHTML = '';
+        for (const r of rows) {
+            // массив лейблов периодов (в левый столбец)
+            const periodLabels = (r.periods || []).map(p => {
+                const s = p.start_date ? new Date(p.start_date).toLocaleDateString() : '';
+                const e = p.end_date ? new Date(p.end_date).toLocaleDateString() : '';
+                return `<div class="mb-1">${e ? `${s} — ${e}` : `${s}`}</div>`;
+            }).join('');
+
+            // массив кнопок действий по каждому периоду (в правый столбец)
+            const periodActions = (r.periods || []).map(p => {
+                const sRaw = p.start_date || '';
+                const eRaw = p.end_date || '';
+                return `
+                  <div class="mb-1 d-flex gap-1">
+                    <button class="btn btn-sm btn-outline-secondary" title="Редактировать"
+                        onclick="openEditPeriod(${p.id}, '${sRaw}', '${eRaw || ''}')">
+                      <i class="fas fa-pen"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" title="Удалить"
+                        onclick="deletePeriod(${p.id})">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </div>
+                `;
+            }).join('');
+
+            const canDeleteReport = !r.periods || r.periods.length === 0;
+            const leftAction = canDeleteReport
+                ? `<button class="btn btn-sm btn-outline-danger" title="Удалить отчёт" onclick="deleteClientReport(${r.template_id})"><i class="fas fa-trash"></i></button>`
+                : `<span class="badge bg-secondary" title="Нельзя удалить — есть периоды">Нельзя удалить</span>`;
+
+            const addBtn = `
+                <button class="btn btn-sm btn-outline-primary" title="Добавить период" onclick="openAddPeriod(${r.template_id})">
+                    <i class="fas fa-calendar-plus"></i>
+                </button>
+            `;
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="text-start align-top">${leftAction}</td>
+                <td class="align-top">${r.report_name || r.short_name || '—'}</td>
+                <td class="align-top">${periodLabels || '—'}</td>
+                <td class="align-top text-nowrap">${periodActions || ''}</td>
+                <td class="text-end align-top">${addBtn}</td>
+            `;
+            tbody.appendChild(tr);
+        }
+
+        placeholder.classList.add('d-none');
+        tableWrap.classList.remove('d-none');
+    } catch (e) {
+        placeholder.classList.remove('d-none');
+        placeholder.innerHTML = '<span class="text-danger">Ошибка загрузки отчётов</span>';
+        console.error(e);
+    }
+}
+
+async function loadAvailableReports() {
+    const placeholder = document.getElementById('availableEmpty');
+    const tableWrap = document.getElementById('availableTableWrap');
+    const tbody = document.getElementById('availableTableBody');
+
+    placeholder.classList.remove('d-none');
+    tableWrap.classList.add('d-none');
+
+    try {
+        const res = await fetch(`/client/{{ client.id }}/available-reports.json`);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const rows = await res.json();
+
+        if (!rows || rows.length === 0) {
+            placeholder.innerHTML = 'Все отчёты уже добавлены';
+            return;
+        }
+
+        tbody.innerHTML = '';
+        for (const r of rows) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td style="width:1%">
+                    <button class="btn btn-sm btn-primary" onclick="assignReport(${r.template_id})">
+                        Добавить
+                    </button>
+                </td>
+                <td>${r.full_name}</td>
+                <td>${r.short_name || '—'}</td>
+            `;
+            tbody.appendChild(tr);
+        }
+
+        placeholder.classList.add('d-none');
+        tableWrap.classList.remove('d-none');
+    } catch (e) {
+        placeholder.classList.remove('d-none');
+        placeholder.innerHTML = '<span class="text-danger">Ошибка загрузки списка</span>';
+        console.error(e);
+    }
+}
+
+async function assignReport(templateId) {
+    const fd = new FormData();
+    fd.append('template_id', templateId);
+    const res = await fetch(`/client/{{ client.id }}/assigned-reports`, { method: 'POST', body: fd });
+    if (res.ok) {
+        await loadClientReports();
+        await loadAvailableReports();
+    } else {
+        const data = await res.json().catch(() => ({}));
+        alert('Ошибка добавления отчёта: ' + (data.detail || 'Неизвестная ошибка'));
+    }
+}
+
+function openAddPeriod(templateId) {
+    document.getElementById('periodTemplateId').value = templateId;
+    const modal = new bootstrap.Modal(document.getElementById('addPeriodModal'));
+    modal.show();
+}
+
+async function submitAddPeriod() {
+    const form = document.getElementById('addPeriodForm');
+    const fd = new FormData(form);
+    const templateId = fd.get('template_id');
+
+    const res = await fetch(`/client/{{ client.id }}/assigned-reports/${templateId}/periods`, {
+        method: 'POST',
+        body: fd
+    });
+
+    if (res.ok) {
+        bootstrap.Modal.getInstance(document.getElementById('addPeriodModal'))?.hide();
+        form.reset();
+        await loadClientReports();
+    } else {
+        const data = await res.json().catch(() => ({}));
+        alert('Ошибка добавления периода: ' + (data.detail || 'Неизвестная ошибка'));
+    }
+}
+
+// === Редактирование периода ===
+function openEditPeriod(historyId, startIso, endIso) {
+    const toDateInput = (iso) => {
+        if (!iso) return '';
+        if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
+        try { return iso.slice(0, 10); } catch { return ''; }
+    };
+
+    document.getElementById('editHistoryId').value = historyId;
+    document.getElementById('editStartDate').value = toDateInput(startIso);
+    document.getElementById('editEndDate').value = toDateInput(endIso);
+
+    const modal = new bootstrap.Modal(document.getElementById('editPeriodModal'));
+    modal.show();
+}
+
+async function submitEditPeriod() {
+    const form = document.getElementById('editPeriodForm');
+    const fd = new FormData(form);
+    const historyId = fd.get('history_id');
+
+    const res = await fetch(`/client/{{ client.id }}/assigned-reports/history/${historyId}`, {
+        method: 'PUT',
+        body: fd
+    });
+    if (res.ok) {
+        bootstrap.Modal.getInstance(document.getElementById('editPeriodModal'))?.hide();
+        form.reset();
+        await loadClientReports();
+    } else {
+        const data = await res.json().catch(() => ({}));
+        alert('Ошибка сохранения периода: ' + (data.detail || 'Неизвестная ошибка'));
+    }
+}
+
+// === Удаление периода ===
+async function deletePeriod(historyId) {
+    if (!confirm('Удалить период?')) return;
+    const res = await fetch(`/client/{{ client.id }}/assigned-reports/history/${historyId}`, {
+        method: 'DELETE'
+    });
+    if (res.ok) {
+        await loadClientReports();
+    } else {
+        const data = await res.json().catch(() => ({}));
+        alert('Ошибка удаления периода: ' + (data.detail || 'Неизвестная ошибка'));
+    }
+}
+
+// === Удаление отчёта ===
+async function deleteClientReport(templateId) {
+    if (!confirm('Удалить отчёт?')) return;
+    const res = await fetch(`/client/{{ client.id }}/assigned-reports/${templateId}`, { method: 'DELETE' });
+    if (res.ok) {
+        await loadClientReports();
+        await loadAvailableReports();
+    } else {
+        const data = await res.json().catch(() => ({}));
+        alert('Ошибка удаления отчёта: ' + (data.detail || 'Неизвестная ошибка'));
+    }
+}
+</script>
+{% endblock %}

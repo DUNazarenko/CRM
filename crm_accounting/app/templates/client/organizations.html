@@ -1,0 +1,65 @@
+<!-- app/templates/client/organizations.html -->
+{% extends "client_base.html" %}
+
+{% block title %}Организации - CRM Бухгалтерия{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-0">
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2"><i class="fas fa-building me-2"></i>Организации</h1>
+        <a href="/client/{{ client.id }}/settings" class="btn btn-primary-custom">
+            <i class="fas fa-cog me-2"></i>Управление организациями
+        </a>
+    </div>
+
+    {% if organizations %}
+    <div class="row">
+        {% for org in organizations %}
+        <div class="col-xl-4 col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">{{ org.short_name }}</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-2">
+                        <strong>Полное наименование:</strong>
+                        <p class="mb-1">{{ org.full_name }}</p>
+                    </div>
+                    {% if org.inn %}
+                    <div class="mb-2">
+                        <strong>ИНН:</strong> {{ org.inn }}
+                    </div>
+                    {% endif %}
+                    {% if org.kpp %}
+                    <div class="mb-2">
+                        <strong>КПП:</strong> {{ org.kpp }}
+                    </div>
+                    {% endif %}
+                    {% if org.ogrn %}
+                    <div class="mb-2">
+                        <strong>ОГРН:</strong> {{ org.ogrn }}
+                    </div>
+                    {% endif %}
+                    {% if org.legal_address %}
+                    <div class="mb-2">
+                        <strong>Юридический адрес:</strong>
+                        <p class="mb-1 small">{{ org.legal_address }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+        <i class="fas fa-building fa-4x text-muted mb-3"></i>
+        <h3>Организации не найдены</h3>
+        <p class="text-muted">Добавьте организации в настройках</p>
+        <a href="/client/{{ client.id }}/settings" class="btn btn-primary-custom">
+            <i class="fas fa-cog me-2"></i>Перейти в настройки
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
